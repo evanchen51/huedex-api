@@ -1,25 +1,41 @@
 import { ApolloServer } from "apollo-server-express"
 import connectRedis from "connect-redis"
+import cors from "cors"
 import express from "express"
 import session from "express-session"
-import redis from "redis"
+import Redis from "ioredis"
+import passport from "passport"
+import path from "path"
 import "reflect-metadata"
 import { buildSchema } from "type-graphql"
-import { __prod__ } from "./constants"
-import { Context } from "./Context"
-import { UserAuthResolver } from "./resolvers/UserAuthResolver"
+import { createConnection } from "typeorm"
+import { COOKIE_NAME, __prod__ } from "./constants"
+import { User } from "./entities/User"
+import { Context } from "./types/Context"
+import passportStrategy from "./utils/passportStrategy"
 
 const main = async () => {
+	await createConnection()
+
 	const app = express()
 
 	const RedisStore = connectRedis(session)
-	const redisClient = redis.createClient()
+	const redis = new Redis()
+
+	app.set("trust proxy", 1)
+
+	app.use(
+		cors({
+			origin: "http://localhost:3000",
+			credentials: true,
+		})
+	)
 
 	app.use(
 		session({
-			name: "COOKIE_NAME",
+			name: COOKIE_NAME,
 			store: new RedisStore({
-				client: redisClient,
+				client: redis,
 				disableTouch: true,
 			}),
 			cookie: {
@@ -36,13 +52,13 @@ const main = async () => {
 
 	const apolloServer = new ApolloServer({
 		schema: await buildSchema({
-			resolvers: [UserAuthResolver],
+			resolvers: [path.join(__dirname, "./resolvers/*.js")],
 			validate: false,
 		}),
 		context: ({ req, res }): Context => ({
 			req,
 			res,
-			// redis,
+			redis,
 			// userLoader: createUserLoader(),
 			// pointLoader: createPointLoader(),
 		}),
@@ -50,7 +66,32 @@ const main = async () => {
 
 	apolloServer.applyMiddleware({
 		app,
+		cors: false,
 	})
+
+	passport.use(passportStrategy)
+
+	app.use(passport.initialize())
+
+	app.get(
+		"/auth/google",
+		passport.authenticate("google", {
+			scope: ["email"],
+		})
+	)
+
+	app.get(
+		"/auth/google/callback",
+		passport.authenticate(
+			"google",
+			{ session: false }
+			// { failureRedirect: "/login", failureFlash: true },
+		),
+		(req, res) => {
+			(req.session as any).userId = (req.user as User).id
+			res.redirect("http://localhost:3000")
+		}
+	)
 
 	app.listen(4000, () => {
 		console.log("——— server running ———")

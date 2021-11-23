@@ -1,6 +1,7 @@
 import { Field, ObjectType } from "type-graphql"
 import {
 	BaseEntity,
+	Column,
 	CreateDateColumn,
 	Entity,
 	JoinColumn,
@@ -15,23 +16,28 @@ import { User } from "./User"
 
 @ObjectType()
 @Entity()
-@Unique("UserToPoll", ["userId", "pollId"])
+@Unique("UserToPoll", ["user", "anonymousId", "poll"])
 export class Vote extends BaseEntity {
 	@Field()
 	@PrimaryGeneratedColumn()
 	id!: number
 
-	@Field()
-	@ManyToOne(() => User, (user) => user.votes, { onDelete: "SET NULL" })
+	@Field(() => User, { nullable: true })
+	@ManyToOne(() => User, (user) => user.votes, { onDelete: "SET NULL", nullable: true })
 	@JoinColumn()
-	user!: User
+	user: User | null
 
-	@Field()
+	@Field(() => String, { nullable: true })
+	@Column({ type: "varchar", nullable: true })
+	anonymousId: string | null
+	// hashed email
+
+	@Field(() => Poll)
 	@ManyToOne(() => Poll, (poll) => poll.votes, { onDelete: "CASCADE" })
 	@JoinColumn()
 	poll!: Poll
 
-	@Field()
+	@Field(() => Option)
 	@ManyToOne(() => Option, (option) => option.votes, { onDelete: "CASCADE" })
 	@JoinColumn()
 	option!: Option

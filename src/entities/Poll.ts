@@ -1,4 +1,4 @@
-import { Field, ObjectType } from "type-graphql"
+import { Field, Int, ObjectType } from "type-graphql"
 import {
 	BaseEntity,
 	Column,
@@ -22,21 +22,26 @@ export class Poll extends BaseEntity {
 	@PrimaryGeneratedColumn()
 	id!: number
 
-	@Field(() => User)
+	@Field(() => User, { nullable: true })
 	@ManyToOne(() => User, (user) => user.polls, { onDelete: "SET NULL", nullable: true })
 	@JoinColumn()
 	poster: User | null
+
+	@Field(() => String, { nullable: true })
+	@Column({ type: "varchar", nullable: true })
+	anonymousId: string | null
+	// hashed email
 
 	@Field()
 	@Column({ type: "int", default: 0 })
 	numOfVotes!: number
 
-	@Field()
-	@Column({ nullable: true })
+	@Field(() => Int, { nullable: true })
+	@Column({ type: "int", nullable: true })
 	mediaTypeId: number | null
 
-	@Field()
-	@Column({ nullable: true })
+	@Field(() => String, { nullable: true })
+	@Column({ type: "varchar", nullable: true })
 	mediaUrl: string | null
 
 	@Field()
