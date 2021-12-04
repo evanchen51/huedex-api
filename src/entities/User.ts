@@ -1,3 +1,4 @@
+import { IsEmail } from "class-validator"
 import { Field, ObjectType } from "type-graphql"
 import {
 	BaseEntity,
@@ -19,34 +20,47 @@ export class User extends BaseEntity {
 	@PrimaryGeneratedColumn()
 	id!: number
 
-	@Column({ unique: true })
+	@Field(() => String, { nullable: true })
+	@Column({ type: "varchar", nullable: true })
+	displayName: string | null
+
+	@IsEmail()
+	@Column({ unique: true, select: false })
 	email!: string
 
-	@Column({ type: "varchar", nullable: true })
-	password: string | null
-
-	@Column({ type: "varchar", nullable: true })
+	@Column({ type: "varchar", nullable: true, select: false })
 	googleId: string | null
 
-	@Field(() => Poll)
+	@Column({ type: "varchar", nullable: true, select: false })
+	password: string | null
+
+	@Field(() => [Poll])
 	@OneToMany(() => Poll, (poll) => poll.poster)
 	polls!: Poll[]
 
-	@Field(() => Vote)
-	@OneToMany(() => Vote, (vote) => vote.user)
+	@Field(() => [Poll])
+	@OneToMany(() => Poll, (poll) => poll.anonymousPoster)
+	anonymousPolls!: Poll[]
+
+	@Field(() => [Vote])
+	@OneToMany(() => Vote, (vote) => vote.voter)
 	votes!: Vote[]
 
-	@Field(() => UserLangPref)
+	@Field(() => [Vote])
+	@OneToMany(() => Vote, (vote) => vote.anonymousVoter)
+	anonymousVotes!: Vote[]
+
+	@Field(() => [UserLangPref])
 	@OneToMany(() => UserLangPref, (pref) => pref.user, { cascade: true })
 	userLangPref!: UserLangPref[]
 
 	//
 
 	@Field(() => String)
-	@CreateDateColumn()
+	@CreateDateColumn({ select: false })
 	createdAt: Date
 
 	@Field(() => String)
-	@UpdateDateColumn()
+	@UpdateDateColumn({ select: false })
 	updatedAt: Date
 }

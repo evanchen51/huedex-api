@@ -1,4 +1,8 @@
+import AdminBroExpress from "@admin-bro/express"
+import { Database, Resource } from "@admin-bro/typeorm"
+import AdminBro from "admin-bro"
 import { ApolloServer } from "apollo-server-express"
+import { validate } from "class-validator"
 import connectRedis from "connect-redis"
 import cors from "cors"
 import express from "express"
@@ -15,9 +19,43 @@ import { Context } from "./types/Context"
 import passportStrategy from "./utils/passportStrategy"
 
 const main = async () => {
-	await createConnection()
+	const connection = await createConnection()
+
+	// await connection.runMigrations()
 
 	const app = express()
+
+	// NOTE might wanna consider taking this out in prod
+	Resource.validate = validate
+	AdminBro.registerAdapter({ Database, Resource })
+	const adminBro = new AdminBro({
+		databases: [connection],
+		resources: [],
+		rootPath: "/admin",
+	})
+	const router = AdminBroExpress.buildAuthenticatedRouter(
+		adminBro,
+		{
+			authenticate: async (email, password) => {
+				if (
+					email === "process.env.ADMIN_EMAIL" &&
+					password === "process.env.ADMIN_PASSWORD"
+				) {
+					return true
+				}
+				return false
+			},
+			cookiePassword: "process.env.AMDIN_SESSION_SECRET",
+		},
+		undefined,
+		{
+			saveUninitialized: false,
+			secret: "process.env.AMDIN_SESSION_SECRET",
+			resave: false,
+		}
+	)
+	app.use(adminBro.options.rootPath, router)
+	// NOTE might wanna consider taking this out in prod
 
 	const RedisStore = connectRedis(session)
 	const redis = new Redis()
@@ -39,7 +77,7 @@ const main = async () => {
 				disableTouch: true,
 			}),
 			cookie: {
-				maxAge: 1000 * 60 * 60 * 24 * 365 * 10, // 10 years
+				maxAge: 1000 * 60 * 60 * 24 * 365 * 20, // 20 years
 				httpOnly: true,
 				sameSite: "lax", // csrf
 				secure: __prod__, // to only work in https
@@ -86,10 +124,12 @@ const main = async () => {
 			"google",
 			{ session: false }
 			// { failureRedirect: "/login", failureFlash: true },
+			// TODO google auth failure redirect
 		),
 		(req, res) => {
-			(req.session as any).userId = (req.user as User).id
+			;(req.session as any).userId = (req.user as User).id
 			res.redirect("http://localhost:3000")
+			// TODO google auth success redirect
 		}
 	)
 

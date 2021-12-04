@@ -1,3 +1,4 @@
+import { Length } from "class-validator"
 import { Field, ObjectType } from "type-graphql"
 import {
 	BaseEntity,
@@ -7,12 +8,14 @@ import {
 	JoinColumn,
 	ManyToOne,
 	PrimaryGeneratedColumn,
+	Unique,
 	UpdateDateColumn,
 } from "typeorm"
 import { Option } from "./Option"
 
 @ObjectType()
 @Entity()
+@Unique("OptionTextLang", ["optionId", "langId"])
 export class OptionText extends BaseEntity {
 	@PrimaryGeneratedColumn()
 	id!: number
@@ -24,6 +27,11 @@ export class OptionText extends BaseEntity {
 	option!: Option
 
 	@Field()
+	@Column()
+	optionId!: number
+
+	@Field()
+	@Length(1, 500)
 	@Column()
 	text!: string
 

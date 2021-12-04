@@ -23,6 +23,10 @@ export class UserLangPref extends BaseEntity {
 
 	@Field()
 	@Column()
+	userId!: number
+
+	@Field()
+	@Column()
 	langId!: number
 
 	//

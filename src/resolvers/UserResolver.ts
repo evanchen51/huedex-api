@@ -1,21 +1,10 @@
-import { User } from './../entities/User';
-// import { FieldError } from '../types/graphqlTypes';
+import { User } from '../entities/User';
 import { Ctx, Mutation, Query, Resolver } from "type-graphql"
-import { COOKIE_NAME } from './../constants';
+import { COOKIE_NAME } from '../constants';
 import { Context } from '../types/Context';
 
 @Resolver()
-export class UserAuthResolver {
-	// @Query(() => [FieldError])
-	// hello() {
-	// 	return [
-	// 		{
-	// 			field: "field",
-	// 			message: "message",
-	// 		},
-	// 	]
-	// }
-
+export class UserResolver {
 	@Query(() => User, { nullable: true })
 	getCurrentUser(@Ctx() { req }: Context) {
 		if (!req.session.userId) return null // not logged in

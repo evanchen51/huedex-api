@@ -11,7 +11,10 @@ const passportStrategy = new GoogleStrategy(
 	async (_: any, __: any, data: any, done: any) => {
 		const googleId: string = data.id
 		const email: string = data.emails[0].value
-		let user = await User.findOne({ where: { email } })
+		let user = await User.findOne({
+			select: ["id", "googleId"],
+			where: { email },
+		})
 		if (!user) {
 			user = await User.create({
 				googleId,

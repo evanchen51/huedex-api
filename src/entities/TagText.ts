@@ -11,25 +11,25 @@ import {
 	Unique,
 	UpdateDateColumn,
 } from "typeorm"
-import { Poll } from "./Poll"
+import { Tag } from "./Tag"
 
 @ObjectType()
 @Entity()
-@Unique("PollTextLang", ["pollId", "langId"])
-export class PollText extends BaseEntity {
+@Unique("TagTextLang", ["tagId", "langId"])
+export class TagText extends BaseEntity {
 	@PrimaryGeneratedColumn()
 	id!: number
 
-	@ManyToOne(() => Poll, (poll) => poll.pollText, { onDelete: "CASCADE" })
+	@ManyToOne(() => Tag, (tag) => tag.tagText, { onDelete: "CASCADE" })
 	@JoinColumn()
-	poll!: Poll
+	tag!: Tag
 
 	@Field()
 	@Column()
-	pollId!: number
+	tagId!: number
 
 	@Field()
-	@Length(1, 500)
+	@Length(1, 20)
 	@Column()
 	text!: string
 

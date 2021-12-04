@@ -1,3 +1,4 @@
+import { Min } from "class-validator"
 import { Field, Int, ObjectType } from "type-graphql"
 import {
 	BaseEntity,
@@ -26,6 +27,11 @@ export class Option extends BaseEntity {
 	poll!: Poll
 
 	@Field()
+	@Column()
+	pollId!: number
+
+	@Field()
+	@Min(0)
 	@Column({ type: "int", default: 0 })
 	numOfVotes!: number
 
@@ -37,16 +43,13 @@ export class Option extends BaseEntity {
 	@Column({ type: "varchar", nullable: true })
 	mediaUrl: string | null
 
-	@Field(() => OptionText)
+	@Field(() => [OptionText])
 	@OneToMany(() => OptionText, (text) => text.option, { cascade: true })
 	optionText!: OptionText[]
 
-	@Field(() => Vote)
+	@Field(() => [Vote])
 	@OneToMany(() => Vote, (vote) => vote.option, { cascade: true })
 	votes!: Vote[]
-
-	// @Field(() => Int, { nullable: true })
-	// voteStatus: number | null
 
 	//
 

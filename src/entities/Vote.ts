@@ -1,6 +1,7 @@
-import { Field, ObjectType } from "type-graphql"
+import { Field, Int, ObjectType } from "type-graphql"
 import {
 	BaseEntity,
+	Check,
 	Column,
 	CreateDateColumn,
 	Entity,
@@ -16,7 +17,8 @@ import { User } from "./User"
 
 @ObjectType()
 @Entity()
-@Unique("UserToPoll", ["user", "anonymousId", "poll"])
+@Check('NOT ("voterId" IS NOT NULL AND "anonymousVoterId" IS NOT NULL)')
+@Unique("UserToPoll", ["voter", "anonymousVoter", "poll"])
 export class Vote extends BaseEntity {
 	@Field()
 	@PrimaryGeneratedColumn()
@@ -25,22 +27,41 @@ export class Vote extends BaseEntity {
 	@Field(() => User, { nullable: true })
 	@ManyToOne(() => User, (user) => user.votes, { onDelete: "SET NULL", nullable: true })
 	@JoinColumn()
-	user: User | null
+	voter: User | null
 
-	@Field(() => String, { nullable: true })
-	@Column({ type: "varchar", nullable: true })
-	anonymousId: string | null
-	// hashed email
+	@Field(() => Int, { nullable: true })
+	@Column({ nullable: true })
+	voterId: number | null
+
+	@Field(() => User, { nullable: true })
+	@ManyToOne(() => User, (user) => user.anonymousVotes, {
+		onDelete: "SET NULL",
+		nullable: true,
+	})
+	@JoinColumn()
+	anonymousVoter: User | null
+
+	@Field(() => Int, { nullable: true })
+	@Column({ nullable: true })
+	anonymousVoterId: number | null
 
 	@Field(() => Poll)
 	@ManyToOne(() => Poll, (poll) => poll.votes, { onDelete: "CASCADE" })
 	@JoinColumn()
 	poll!: Poll
 
+	@Field()
+	@Column()
+	pollId!: number
+
 	@Field(() => Option)
 	@ManyToOne(() => Option, (option) => option.votes, { onDelete: "CASCADE" })
 	@JoinColumn()
 	option!: Option
+
+	@Field()
+	@Column()
+	optionId!: number
 
 	//
 

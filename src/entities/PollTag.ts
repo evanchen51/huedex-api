@@ -1,4 +1,3 @@
-import { Length } from "class-validator"
 import { Field, ObjectType } from "type-graphql"
 import {
 	BaseEntity,
@@ -8,19 +7,20 @@ import {
 	JoinColumn,
 	ManyToOne,
 	PrimaryGeneratedColumn,
-	Unique,
 	UpdateDateColumn,
 } from "typeorm"
 import { Poll } from "./Poll"
+import { Tag } from "./Tag"
 
 @ObjectType()
 @Entity()
-@Unique("PollTextLang", ["pollId", "langId"])
-export class PollText extends BaseEntity {
+export class PollTag extends BaseEntity {
+	@Field()
 	@PrimaryGeneratedColumn()
 	id!: number
 
-	@ManyToOne(() => Poll, (poll) => poll.pollText, { onDelete: "CASCADE" })
+	@Field(() => Poll)
+	@ManyToOne(() => Poll, (poll) => poll.tags, { onDelete: "CASCADE" })
 	@JoinColumn()
 	poll!: Poll
 
@@ -28,14 +28,14 @@ export class PollText extends BaseEntity {
 	@Column()
 	pollId!: number
 
-	@Field()
-	@Length(1, 500)
-	@Column()
-	text!: string
+	@Field(() => Tag)
+	@ManyToOne(() => Tag, (tag) => tag.polls, { onDelete: "CASCADE" })
+	@JoinColumn()
+	tag!: Tag
 
 	@Field()
 	@Column()
-	langId!: number
+	tagId!: number
 
 	//
 
