@@ -1,5 +1,5 @@
-import { IsEmail } from "class-validator"
-import { Field, ObjectType } from "type-graphql"
+import { IsEmail, Length } from "class-validator"
+import { Field, Int, ObjectType } from "type-graphql"
 import {
 	BaseEntity,
 	Column,
@@ -21,6 +21,7 @@ export class User extends BaseEntity {
 	id!: number
 
 	@Field(() => String, { nullable: true })
+	@Length(1, 20)
 	@Column({ type: "varchar", nullable: true })
 	displayName: string | null
 
@@ -50,9 +51,13 @@ export class User extends BaseEntity {
 	@OneToMany(() => Vote, (vote) => vote.anonymousVoter)
 	anonymousVotes!: Vote[]
 
+	@Field(() => Int, { nullable: true })
+	@Column({ type: "int", nullable: true })
+	primaryLangPref: number | null
+
 	@Field(() => [UserLangPref])
 	@OneToMany(() => UserLangPref, (pref) => pref.user, { cascade: true })
-	userLangPref!: UserLangPref[]
+	allLangPrefs!: UserLangPref[]
 
 	//
 

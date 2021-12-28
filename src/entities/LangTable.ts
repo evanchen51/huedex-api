@@ -19,14 +19,12 @@ export class LangTable extends BaseEntity {
 	@Field()
 	@Column()
 	englishName!: string
-
+	
 	//
 
-	@Field(() => String)
 	@CreateDateColumn()
 	createdAt: Date
 
-	@Field(() => String)
 	@UpdateDateColumn()
 	updatedAt: Date
 }

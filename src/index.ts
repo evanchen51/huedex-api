@@ -128,8 +128,7 @@ const main = async () => {
 		),
 		(req, res) => {
 			;(req.session as any).userId = (req.user as User).id
-			res.redirect("http://localhost:3000")
-			// TODO google auth success redirect
+			res.redirect("http://localhost:3000/login-success-redirect")
 		}
 	)
 

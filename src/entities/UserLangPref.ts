@@ -17,7 +17,7 @@ export class UserLangPref extends BaseEntity {
 	@PrimaryGeneratedColumn()
 	id!: number
 
-	@ManyToOne(() => User, (user) => user.userLangPref, { onDelete: "CASCADE" })
+	@ManyToOne(() => User, (user) => user.allLangPrefs, { onDelete: "CASCADE" })
 	@JoinColumn()
 	user!: User
 
@@ -31,11 +31,9 @@ export class UserLangPref extends BaseEntity {
 
 	//
 
-	@Field(() => String)
 	@CreateDateColumn()
 	createdAt: Date
 
-	@Field(() => String)
 	@UpdateDateColumn()
 	updatedAt: Date
 }

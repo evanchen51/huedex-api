@@ -18,11 +18,9 @@ export class MediaTable extends BaseEntity {
 
 	//
 
-	@Field(() => String)
 	@CreateDateColumn()
 	createdAt: Date
 
-	@Field(() => String)
 	@UpdateDateColumn()
 	updatedAt: Date
 }

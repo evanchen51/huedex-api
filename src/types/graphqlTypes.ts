@@ -17,6 +17,12 @@ export class CreatePollInput {
 }
 
 @ObjectType()
+export class LangPref {
+	@Field(() => [Int])
+	langId!: number[]
+}
+
+@ObjectType()
 export class Text {
 	@Field(() => String, { nullable: true })
 	text: string | null
