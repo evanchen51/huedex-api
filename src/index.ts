@@ -1,64 +1,31 @@
-import AdminBroExpress from "@admin-bro/express"
-import { Database, Resource } from "@admin-bro/typeorm"
-import AdminBro from "admin-bro"
 import { ApolloServer } from "apollo-server-express"
-import { validate } from "class-validator"
 import connectRedis from "connect-redis"
 import cors from "cors"
 import express from "express"
 import session from "express-session"
-import Redis from "ioredis"
 import passport from "passport"
 import path from "path"
 import "reflect-metadata"
 import { buildSchema } from "type-graphql"
-import { createConnection } from "typeorm"
+import { User } from "./../prisma/models/users/User"
 import { COOKIE_NAME, __prod__ } from "./constants"
-import { User } from "./entities/User"
-import { Context } from "./types/Context"
-import passportStrategy from "./utils/passportStrategy"
+import { redis } from "./redis"
+import { GraphQLContext } from "./types/GraphQLContext"
+import passportStrategy from "./utils/auth/passportStrategy"
+import { createOptionLoader } from "./utils/createDataLoaders/createOptionLoader"
+import { createPollLoader } from "./utils/createDataLoaders/createPollLoader"
+import { createTopicLoader } from "./utils/createDataLoaders/createTopicLoader"
+import { createTopOptionLoader } from "./utils/createDataLoaders/createTopOptionLoader"
+import { createUserLoader } from "./utils/createDataLoaders/createUserLoader"
 
 const main = async () => {
-	const connection = await createConnection()
+	// const connection = await createConnection()
 
 	// await connection.runMigrations()
 
 	const app = express()
 
-	// NOTE might wanna consider taking this out in prod
-	Resource.validate = validate
-	AdminBro.registerAdapter({ Database, Resource })
-	const adminBro = new AdminBro({
-		databases: [connection],
-		resources: [],
-		rootPath: "/admin",
-	})
-	const router = AdminBroExpress.buildAuthenticatedRouter(
-		adminBro,
-		{
-			authenticate: async (email, password) => {
-				if (
-					email === "process.env.ADMIN_EMAIL" &&
-					password === "process.env.ADMIN_PASSWORD"
-				) {
-					return true
-				}
-				return false
-			},
-			cookiePassword: "process.env.AMDIN_SESSION_SECRET",
-		},
-		undefined,
-		{
-			saveUninitialized: false,
-			secret: "process.env.AMDIN_SESSION_SECRET",
-			resave: false,
-		}
-	)
-	app.use(adminBro.options.rootPath, router)
-	// NOTE might wanna consider taking this out in prod
-
 	const RedisStore = connectRedis(session)
-	const redis = new Redis()
 
 	app.set("trust proxy", 1)
 
@@ -77,7 +44,7 @@ const main = async () => {
 				disableTouch: true,
 			}),
 			cookie: {
-				maxAge: 1000 * 60 * 60 * 24 * 365 * 20, // 20 years
+				maxAge: 1000 * 60 * 60 * 24 * 365 * 10, // 10 years
 				httpOnly: true,
 				sameSite: "lax", // csrf
 				secure: __prod__, // to only work in https
@@ -93,12 +60,15 @@ const main = async () => {
 			resolvers: [path.join(__dirname, "./resolvers/*.js")],
 			validate: false,
 		}),
-		context: ({ req, res }): Context => ({
+		context: ({ req, res }): GraphQLContext => ({
 			req,
 			res,
 			redis,
-			// userLoader: createUserLoader(),
-			// pointLoader: createPointLoader(),
+			optionLoader: createOptionLoader(),
+			pollLoader: createPollLoader(),
+			topicLoader: createTopicLoader(),
+			topOptionLoader: createTopOptionLoader(),
+			userLoader: createUserLoader(),
 		}),
 	})
 

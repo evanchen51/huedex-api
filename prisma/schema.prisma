@@ -1,0 +1,188 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = "postgresql://postgres:postgres@localhost:5432/devDB2"
+}
+
+model FollowLanguage {
+  id           String   @id @default(cuid())
+  followerId   String
+  languageCode String
+  createdAt    DateTime @default(now()) @db.Timestamp(0)
+  updatedAt    DateTime @default(now()) @updatedAt @db.Timestamp(0)
+  follower     User     @relation(fields: [followerId], references: [id], onDelete: Cascade)
+  language     Language @relation(fields: [languageCode], references: [code], onDelete: Cascade)
+
+  @@unique([followerId, languageCode], name: "joint")
+}
+
+model FollowTopic {
+  id         String   @id @default(cuid())
+  followerId String
+  topicId    String
+  createdAt  DateTime @default(now()) @db.Timestamp(0)
+  updatedAt  DateTime @default(now()) @updatedAt @db.Timestamp(0)
+  follower   User     @relation(fields: [followerId], references: [id], onDelete: Cascade)
+  topic      Topic    @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, topicId], name: "joint")
+}
+
+model FollowUser {
+  id         String   @id @default(cuid())
+  followerId String
+  userId     String
+  createdAt  DateTime @default(now()) @db.Timestamp(0)
+  updatedAt  DateTime @default(now()) @updatedAt @db.Timestamp(0)
+  follower   User     @relation("FollowingUsers", fields: [followerId], references: [id], onDelete: Cascade)
+  user       User     @relation("Followers", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, userId], name: "joint")
+}
+
+model Language {
+  id                   String                 @id @default(cuid())
+  code                 String                 @unique
+  nativeName           String
+  englishName          String
+  createdAt            DateTime               @default(now()) @db.Timestamp(0)
+  updatedAt            DateTime               @default(now()) @updatedAt @db.Timestamp(0)
+  followers            FollowLanguage[]
+  options              Option[]
+  polls                Poll[]
+  userDisplayLanguages UserPersonalSettings[]
+}
+
+model MediaType {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  info      String
+  createdAt DateTime @default(now()) @db.Timestamp(0)
+  updatedAt DateTime @default(now()) @updatedAt @db.Timestamp(0)
+  options   Option[]
+  polls     Poll[]
+}
+
+model Option {
+  id             String          @id @default(cuid())
+  text           String
+  numOfVotes     Int             @default(0)
+  mediaUrl       String?
+  pollId         String
+  mediaTypeCode  String?
+  languageCode   String          @default("un")
+  createdAt      DateTime        @default(now()) @db.Timestamp(0)
+  updatedAt      DateTime        @default(now()) @updatedAt @db.Timestamp(0)
+  language       Language        @relation(fields: [languageCode], references: [code], onDelete: SetDefault)
+  mediaType      MediaType?      @relation(fields: [mediaTypeCode], references: [code])
+  poll           Poll            @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  anonymousVotes AnonymousVote[]
+  votes          Vote[]
+}
+
+model Poll {
+  id                String          @id @default(cuid())
+  text              String
+  numOfVotes        Int             @default(0)
+  mediaUrl          String?
+  sensitive         Boolean         @default(false)
+  posterId          String?
+  mediaTypeCode     String?
+  languageCode      String          @default("un")
+  createdAt         DateTime        @default(now()) @db.Timestamp(0)
+  updatedAt         DateTime        @default(now()) @updatedAt @db.Timestamp(0)
+  anonymousPosterId String?
+  numOfChoices      Int             @default(1)
+  anonymousPoster   User?           @relation("AnonymousPolls", fields: [anonymousPosterId], references: [id])
+  language          Language        @relation(fields: [languageCode], references: [code], onDelete: SetDefault)
+  mediaType         MediaType?      @relation(fields: [mediaTypeCode], references: [code])
+  poster            User?           @relation("Polls", fields: [posterId], references: [id])
+  anonymousVotes    AnonymousVote[]
+  options           Option[]
+  topics            PollTopic[]
+  votes             Vote[]
+}
+
+model PollTopic {
+  id        String   @id @default(cuid())
+  pollId    String
+  topicId   String
+  createdAt DateTime @default(now()) @db.Timestamp(0)
+  updatedAt DateTime @default(now()) @updatedAt @db.Timestamp(0)
+  poll      Poll     @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  topic     Topic    @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@unique([pollId, topicId], name: "joint")
+}
+
+model Topic {
+  id        String        @id @default(cuid())
+  createdAt DateTime      @default(now()) @db.Timestamp(0)
+  updatedAt DateTime      @default(now()) @updatedAt @db.Timestamp(0)
+  name      String        @unique
+  followers FollowTopic[]
+  polls     PollTopic[]
+}
+
+model User {
+  id                 String                @id @default(cuid())
+  displayName        String?
+  private            Boolean               @default(false)
+  createdAt          DateTime              @default(now()) @db.Timestamp(0)
+  updatedAt          DateTime              @default(now()) @updatedAt @db.Timestamp(0)
+  anonymousVotes     AnonymousVote[]
+  followingLanguages FollowLanguage[]
+  followingTopics    FollowTopic[]
+  followingUsers     FollowUser[]          @relation("FollowingUsers")
+  followers          FollowUser[]          @relation("Followers")
+  anonymousPolls     Poll[]                @relation("AnonymousPolls")
+  polls              Poll[]                @relation("Polls")
+  personalSetting    UserPersonalSettings?
+  votes              Vote[]
+}
+
+model UserPersonalSettings {
+  id                  String   @id @default(cuid())
+  userId              String   @unique
+  displayLanguageCode String   @default("un")
+  createdAt           DateTime @default(now()) @db.Timestamp(0)
+  updatedAt           DateTime @default(now()) @updatedAt @db.Timestamp(0)
+  email               String   @unique
+  googleId            String?  @unique
+  password            String?
+  displaylanguage     Language @relation(fields: [displayLanguageCode], references: [code], onDelete: SetDefault)
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("UserPersonalSetting")
+}
+
+model Vote {
+  pollId    String
+  optionId  String
+  voterId   String
+  createdAt DateTime @default(now()) @db.Timestamp(0)
+  updatedAt DateTime @default(now()) @updatedAt @db.Timestamp(0)
+  id        String   @id @default(cuid())
+  option    Option   @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  poll      Poll     @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  voter     User     @relation(fields: [voterId], references: [id], onDelete: Cascade)
+
+  @@unique([optionId, pollId, voterId], name: "joint")
+}
+
+model AnonymousVote {
+  pollId    String
+  optionId  String
+  voterId   String
+  createdAt DateTime @default(now()) @db.Timestamp(0)
+  updatedAt DateTime @default(now()) @updatedAt @db.Timestamp(0)
+  id        String   @id @default(cuid())
+  option    Option   @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  poll      Poll     @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  voter     User     @relation(fields: [voterId], references: [id], onDelete: Cascade)
+
+  @@unique([optionId, pollId, voterId], name: "joint")
+}

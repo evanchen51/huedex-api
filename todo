@@ -1,8 +1,12 @@
-TODO password login
-TODO apple login
+roadmap:
 
-TODO probably gonna need Field Resolver
+TODO page - create poll
 
-TODO rename Tag to Topic
+TODO media handling (upload, store, retrieve)
 
-TODO RegionTable, region property
+TODO page - user page/feed, topic page/feed
+
+TODO new user experience, full user experience
+
+TODO anonymous voting, mini-polls, circles, comments, sensitive, translations, graph, chat
+
