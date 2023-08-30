@@ -6,8 +6,8 @@ import { User } from "./User"
 export class UserPersonalSettings {
 	@Field()
 	userId: string
-	@Field()
-	displayLanguageCode: string
+	@Field(() => String, { nullable: true })
+	displayLanguageCode?: string | null
 	@Field(() => Language)
 	displaylanguage?: Language
 	@Field(() => User)

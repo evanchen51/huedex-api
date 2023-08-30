@@ -1,3 +1,4 @@
+import { PollType } from '../tables/PollType'
 import { Field, Int, ObjectType } from "type-graphql"
 import { Language } from "../tables/Language"
 import { MediaType } from "../tables/MediaType"
@@ -25,6 +26,8 @@ export class Poll {
 	numOfChoices: number
 	@Field(() => String, { nullable: true })
 	mediaTypeCode?: string | null
+	@Field(() => String, { nullable: true })
+	pollTypeCode?: string | null
 	@Field()
 	languageCode: string
 	@Field(() => String)
@@ -35,6 +38,8 @@ export class Poll {
 	language?: Language
 	@Field(() => MediaType, { nullable: true })
 	mediaType?: MediaType | null
+	@Field(() => PollType, { nullable: true })
+	pollType?: PollType | null
 	@Field(() => User, { nullable: true })
 	poster?: User | null
 	@Field(() => [AnonymousVote], { nullable: true })
@@ -43,6 +48,8 @@ export class Poll {
 	options?: Option[]
 	@Field(() => [Option], { nullable: true })
 	topOptions?: Option[]
+	@Field(() => Int, { nullable: true })
+	numOfOptions?: number
 	@Field(() => [PollTopic])
 	topics?: PollTopic[]
 	@Field(() => [Vote], { nullable: true })

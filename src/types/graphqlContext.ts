@@ -7,7 +7,7 @@ import { createTopicLoader } from "../utils/createDataLoaders/createTopicLoader"
 import { createTopOptionLoader } from "../utils/createDataLoaders/createTopOptionLoader"
 import { createUserLoader } from "../utils/createDataLoaders/createUserLoader"
 
-export type GraphQLContext = {
+export type graphqlContext = {
 	req: Request & {
 		session: Session & Partial<SessionData> & { userId?: string }
 	}

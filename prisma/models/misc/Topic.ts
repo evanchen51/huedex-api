@@ -4,10 +4,10 @@ import { FollowTopic } from './../follows/FollowTopic';
 
 @ObjectType()
 export class Topic {
+	// @Field()
+	// id: string
 	@Field()
 	id: string
-	@Field()
-	name: string
 	@Field(() => [FollowTopic], { nullable: true })
 	followers?: FollowTopic[]
 	@Field(() => [PollTopic], { nullable: true })

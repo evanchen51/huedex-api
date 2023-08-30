@@ -4,7 +4,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = "postgresql://postgres:postgres@localhost:5432/devDB2"
+  url      = "postgresql://postgres:postgres@localhost:5432/test"
 }
 
 model FollowLanguage {
@@ -53,7 +53,7 @@ model Language {
   followers            FollowLanguage[]
   options              Option[]
   polls                Poll[]
-  userDisplayLanguages UserPersonalSettings[]
+  displayLanguageUsers UserPersonalSettings[]
 }
 
 model MediaType {
@@ -63,6 +63,15 @@ model MediaType {
   createdAt DateTime @default(now()) @db.Timestamp(0)
   updatedAt DateTime @default(now()) @updatedAt @db.Timestamp(0)
   options   Option[]
+  polls     Poll[]
+}
+
+model PollType {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  info      String
+  createdAt DateTime @default(now()) @db.Timestamp(0)
+  updatedAt DateTime @default(now()) @updatedAt @db.Timestamp(0)
   polls     Poll[]
 }
 
@@ -91,6 +100,7 @@ model Poll {
   sensitive         Boolean         @default(false)
   posterId          String?
   mediaTypeCode     String?
+  pollTypeCode      String?
   languageCode      String          @default("un")
   createdAt         DateTime        @default(now()) @db.Timestamp(0)
   updatedAt         DateTime        @default(now()) @updatedAt @db.Timestamp(0)
@@ -99,6 +109,7 @@ model Poll {
   anonymousPoster   User?           @relation("AnonymousPolls", fields: [anonymousPosterId], references: [id])
   language          Language        @relation(fields: [languageCode], references: [code], onDelete: SetDefault)
   mediaType         MediaType?      @relation(fields: [mediaTypeCode], references: [code])
+  PollType          PollType?       @relation(fields: [pollTypeCode], references: [code])
   poster            User?           @relation("Polls", fields: [posterId], references: [id])
   anonymousVotes    AnonymousVote[]
   options           Option[]
@@ -119,10 +130,9 @@ model PollTopic {
 }
 
 model Topic {
-  id        String        @id @default(cuid())
   createdAt DateTime      @default(now()) @db.Timestamp(0)
   updatedAt DateTime      @default(now()) @updatedAt @db.Timestamp(0)
-  name      String        @unique
+  id        String        @id @unique
   followers FollowTopic[]
   polls     PollTopic[]
 }
@@ -145,18 +155,18 @@ model User {
 }
 
 model UserPersonalSettings {
-  id                  String   @id @default(cuid())
-  userId              String   @unique
-  displayLanguageCode String   @default("un")
-  createdAt           DateTime @default(now()) @db.Timestamp(0)
-  updatedAt           DateTime @default(now()) @updatedAt @db.Timestamp(0)
-  email               String   @unique
-  googleId            String?  @unique
+  id                  String    @id @default(cuid())
+  userId              String    @unique
+  displayLanguageCode String?
+  createdAt           DateTime  @default(now()) @db.Timestamp(0)
+  updatedAt           DateTime  @default(now()) @updatedAt @db.Timestamp(0)
+  email               String    @unique
+  googleId            String?   @unique
   password            String?
-  displaylanguage     Language @relation(fields: [displayLanguageCode], references: [code], onDelete: SetDefault)
-  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  displayLanguage     Language? @relation(fields: [displayLanguageCode], references: [code], onDelete: SetDefault)
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@map("UserPersonalSetting")
+  // @@map("UserPersonalSetting")
 }
 
 model Vote {

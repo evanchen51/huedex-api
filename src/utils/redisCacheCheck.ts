@@ -9,7 +9,7 @@ export async function redisCacheCheck<T>({
 }: {
 	key: string
 	args: (string | number)[]
-	type: "hgetall" | "zrevrange" | "smembers" | "hkeys"
+	type: "hgetall" | "zrevrange" | "smembers" | "hkeys" | "scard"
 	hit: (cache: any) => Promise<T>
 	miss: () => Promise<T>
 }): Promise<T> {
@@ -30,6 +30,10 @@ export async function redisCacheCheck<T>({
 		case "hkeys":
 			cache = await redis.hkeys(key)
 			if (cache.length > 0) return await hit(cache)
+			break
+		case "scard":
+			cache = await redis.scard(key)
+			if (cache >= 0) return await hit(cache)
 			break
 	}
 	return miss()

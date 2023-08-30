@@ -7,23 +7,23 @@ import { PollTopic } from "./../../prisma/models/relations/PollTopic"
 import { User } from "./../../prisma/models/users/User"
 import {
 	NO_VALUE_PLACEHOLDER,
-	REDIS_KEY_POLL,
-	REDIS_KEY_POLL_OPTIONS,
-	REDIS_KEY_POLL_TOPICS,
-	REDIS_KEY_TOPIC,
-	REDIS_KEY_USER,
+	REDIS_HASH_KEY_POLL,
+	REDIS_HASH_KEY_TOPIC,
+	REDIS_HASH_KEY_USER,
+	REDIS_SET_KEY_POLL_OPTIONS,
+	REDIS_SET_KEY_POLL_TOPICS,
 } from "./../constants"
-import { GraphQLContext } from "./../types/GraphQLContext"
+import { graphqlContext } from "./../types/graphqlContext"
 import { redisCacheToObject } from "./../utils/redisCacheToObject"
 import { FeedItem } from "./FeedResolver"
 
 @Resolver(Poll)
 export class PollFieldResolver {
 	@FieldResolver(() => User, { nullable: true })
-	async poster(@Root() { posterId }: Poll, @Ctx() { userLoader }: GraphQLContext) {
+	async poster(@Root() { posterId }: Poll, @Ctx() { userLoader }: graphqlContext) {
 		if (!posterId) return null
 		return await redisCacheCheck({
-			key: REDIS_KEY_USER + posterId,
+			key: REDIS_HASH_KEY_USER + posterId,
 			args: [],
 			type: "hgetall",
 			hit: async (cache) => redisCacheToObject(cache),
@@ -32,10 +32,10 @@ export class PollFieldResolver {
 	}
 
 	@FieldResolver(() => [Option])
-	async options(@Root() poll: Poll, @Ctx() { redis, optionLoader }: GraphQLContext) {
+	async options(@Root() poll: Poll, @Ctx() { redis, optionLoader }: graphqlContext) {
 		return optionLoader.load(
 			await redisCacheCheck({
-				key: REDIS_KEY_POLL_OPTIONS + poll.id,
+				key: REDIS_SET_KEY_POLL_OPTIONS + poll.id,
 				args: [],
 				type: "smembers",
 				hit: async (cache) => cache,
@@ -47,7 +47,7 @@ export class PollFieldResolver {
 						})
 					).map((e) => e.id)
 					if (!data || data.length === 0) return []
-					redis.sadd(REDIS_KEY_POLL_OPTIONS + poll.id, data)
+					redis.sadd(REDIS_SET_KEY_POLL_OPTIONS + poll.id, data)
 					return data
 				},
 			})
@@ -55,10 +55,10 @@ export class PollFieldResolver {
 	}
 
 	@FieldResolver(() => [Option])
-	async topOptions(@Root() poll: Poll, @Ctx() { redis, topOptionLoader }: GraphQLContext) {
+	async topOptions(@Root() poll: Poll, @Ctx() { redis, topOptionLoader }: graphqlContext) {
 		return topOptionLoader.load(
 			await redisCacheCheck({
-				key: REDIS_KEY_POLL_OPTIONS + poll.id,
+				key: REDIS_SET_KEY_POLL_OPTIONS + poll.id,
 				args: [],
 				type: "smembers",
 				hit: async (cache) => cache,
@@ -69,17 +69,42 @@ export class PollFieldResolver {
 							.options({ select: { id: true } })
 					).map((e) => e.id)
 					if (!data || data.length === 0) return []
-					redis.sadd(REDIS_KEY_POLL_OPTIONS + poll.id, data)
+					redis.sadd(REDIS_SET_KEY_POLL_OPTIONS + poll.id, data)
 					return data
 				},
 			})
 		)
 	}
 
-	@FieldResolver(() => [PollTopic])
-	async topics(@Root() poll: Poll, @Ctx() { redis }: GraphQLContext) {
+	@FieldResolver(() => Number)
+	async numOfOptions(@Root() poll: Poll, @Ctx() { redis }: graphqlContext) {
 		return await redisCacheCheck({
-			key: REDIS_KEY_POLL_TOPICS + poll.id,
+			key: REDIS_SET_KEY_POLL_OPTIONS + poll.id,
+			args: [],
+			type: "scard",
+			hit: async (cache) => cache,
+			miss: async () => {
+				const data = await prisma.poll.findUnique({
+					where: { id: poll.id },
+					select: {
+						_count: {
+							select: { options: true },
+						},
+						options: { select: { id: true } },
+					},
+				})
+
+				if (!data) return 0
+				redis.sadd(REDIS_SET_KEY_POLL_OPTIONS + poll.id, data.options)
+				return data._count
+			},
+		})
+	}
+
+	@FieldResolver(() => [PollTopic])
+	async topics(@Root() poll: Poll, @Ctx() { redis }: graphqlContext) {
+		return await redisCacheCheck({
+			key: REDIS_SET_KEY_POLL_TOPICS + poll.id,
 			args: [],
 			type: "smembers",
 			hit: async (cache) => {
@@ -94,10 +119,10 @@ export class PollFieldResolver {
 				).map((e) => e.topicId)
 				if (data.length === 0) {
 					// NOTE remember to consider REDIS_VALUE_POLL_NO_TOPIC when mini-poll adds topics
-					redis.sadd(REDIS_KEY_POLL_TOPICS + poll.id, NO_VALUE_PLACEHOLDER)
+					redis.sadd(REDIS_SET_KEY_POLL_TOPICS + poll.id, NO_VALUE_PLACEHOLDER)
 					return []
 				}
-				redis.sadd(REDIS_KEY_POLL_TOPICS + poll.id, data)
+				redis.sadd(REDIS_SET_KEY_POLL_TOPICS + poll.id, data)
 				return data.map((e) => ({ pollId: poll.id, topicId: e }))
 			},
 		})
@@ -107,9 +132,9 @@ export class PollFieldResolver {
 @Resolver(PollTopic)
 export class PollTopicFieldResolver {
 	@FieldResolver(() => Topic)
-	async topic(@Root() pollTopic: PollTopic, @Ctx() { topicLoader }: GraphQLContext) {
+	async topic(@Root() pollTopic: PollTopic, @Ctx() { topicLoader }: graphqlContext) {
 		return await redisCacheCheck({
-			key: REDIS_KEY_TOPIC + pollTopic.topicId,
+			key: REDIS_HASH_KEY_TOPIC + pollTopic.topicId,
 			args: [],
 			type: "hgetall",
 			hit: async (cache) => redisCacheToObject(cache),
@@ -121,9 +146,9 @@ export class PollTopicFieldResolver {
 @Resolver(FeedItem)
 export class FeedFieldResolver {
 	@FieldResolver(() => Poll)
-	async item(@Root() { id }: FeedItem, @Ctx() { pollLoader }: GraphQLContext) {
+	async item(@Root() { id }: FeedItem, @Ctx() { pollLoader }: graphqlContext) {
 		return await redisCacheCheck({
-			key: REDIS_KEY_POLL + id,
+			key: REDIS_HASH_KEY_POLL + id,
 			args: [],
 			type: "hgetall",
 			hit: async (cache) => redisCacheToObject(cache),

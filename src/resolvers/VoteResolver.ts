@@ -1,17 +1,17 @@
 import { Arg, Ctx, Field, InputType, Mutation, Query, Resolver, UseMiddleware } from "type-graphql"
 import {
 	NO_VALUE_PLACEHOLDER,
-	REDIS_KEY_HOME_FEED,
-	REDIS_KEY_OPTION,
-	REDIS_KEY_POLL,
-	REDIS_KEY_POLL_TOPICS,
-	REDIS_KEY_TOPIC_FOLLOWERS,
-	REDIS_KEY_USER_FOLLOWERS,
-	REDIS_KEY_USER_VOTE_HISTORY
+	REDIS_SORTEDSET_KEY_HOME_FEED,
+	REDIS_HASH_KEY_OPTION,
+	REDIS_HASH_KEY_POLL,
+	REDIS_SET_KEY_POLL_TOPICS,
+	REDIS_SET_KEY_TOPIC_FOLLOWERS,
+	REDIS_SET_KEY_USER_FOLLOWERS,
+	REDIS_HASH_KEY_USER_VOTE_HISTORY,
 } from "../constants"
 import { isLoggedIn } from "../middleware/graphql/isLoggedIn"
 import { prisma } from "../prisma"
-import { GraphQLContext } from "../types/GraphQLContext"
+import { graphqlContext } from "../types/graphqlContext"
 import { Vote } from "./../../prisma/models/votes/Vote"
 import { transactionExecute, transactionForm } from "./../utils/prismaTransaction"
 import { redisCacheCheck } from "./../utils/redisCacheCheck"
@@ -38,10 +38,13 @@ export class VoteReq {
 export class VoteResolver {
 	@Query(() => [Vote])
 	@UseMiddleware(isLoggedIn)
-	async getVoteHistory(@Ctx() { req, redis }: GraphQLContext): Promise<Vote[]> {
+	async getVoteHistory(
+		// @Arg("path", () => String) path: string,
+		@Ctx() { req, redis }: graphqlContext
+	): Promise<Vote[]> {
 		const voterId = req.session.userId!
 		return await redisCacheCheck({
-			key: REDIS_KEY_USER_VOTE_HISTORY + voterId,
+			key: REDIS_HASH_KEY_USER_VOTE_HISTORY + voterId,
 			args: [],
 			type: "hgetall",
 			hit: async (cache) =>
@@ -54,7 +57,7 @@ export class VoteResolver {
 				const data = await prisma.vote.findMany({ where: { voterId } })
 				if (data.length === 0) return []
 				redis.hmset(
-					REDIS_KEY_USER_VOTE_HISTORY + voterId,
+					REDIS_HASH_KEY_USER_VOTE_HISTORY + voterId,
 					data.reduce((res, e) => ({ ...res, [e.optionId]: e.pollId }), {})
 				)
 				return data
@@ -66,7 +69,7 @@ export class VoteResolver {
 	@UseMiddleware(isLoggedIn)
 	async sendVoteReq(
 		@Arg("voteReq", () => VoteReq) { pollId, numOfChoices, voteState }: VoteReq,
-		@Ctx() { req, redis }: GraphQLContext
+		@Ctx() { req, redis }: graphqlContext
 	): Promise<Boolean> {
 		if (voteState.reduce((res, e) => (e.state === "voted" ? (res += 1) : res), 0) > numOfChoices)
 			return false
@@ -95,7 +98,7 @@ export class VoteResolver {
 
 		// Update Followers' Feeds
 		const userFollowers = await redisCacheCheck({
-			key: REDIS_KEY_USER_FOLLOWERS + voterId,
+			key: REDIS_SET_KEY_USER_FOLLOWERS + voterId,
 			args: [],
 			type: "smembers",
 			hit: async (cache) => cache,
@@ -106,20 +109,20 @@ export class VoteResolver {
 						.followers({ select: { followerId: true } })
 				).map((e) => e.followerId)
 				if (data.length === 0) return []
-				redis.sadd(REDIS_KEY_USER_FOLLOWERS + voterId, data)
+				redis.sadd(REDIS_SET_KEY_USER_FOLLOWERS + voterId, data)
 				return data
 			},
 		})
 		userFollowers.forEach(async (e: string) => {
-			const p = await redis.zscore(REDIS_KEY_HOME_FEED + e, pollId)
-			if (p) redis.zincrby(REDIS_KEY_HOME_FEED + e, 3, pollId)
+			const p = await redis.zscore(REDIS_SORTEDSET_KEY_HOME_FEED + e, pollId)
+			if (p) redis.zincrby(REDIS_SORTEDSET_KEY_HOME_FEED + e, 3, pollId)
 			else {
-				const n = await redis.zcard(REDIS_KEY_HOME_FEED + e)
-				redis.zincrby(REDIS_KEY_HOME_FEED + e, n + 3, pollId)
+				const n = await redis.zcard(REDIS_SORTEDSET_KEY_HOME_FEED + e)
+				redis.zincrby(REDIS_SORTEDSET_KEY_HOME_FEED + e, n + 3, pollId)
 			}
 		})
 		const topicIds = await redisCacheCheck({
-			key: REDIS_KEY_POLL_TOPICS + pollId,
+			key: REDIS_SET_KEY_POLL_TOPICS + pollId,
 			args: [],
 			type: "smembers",
 			hit: async (cache) => {
@@ -134,16 +137,17 @@ export class VoteResolver {
 				).map((e) => e.topicId)
 				if (data.length === 0) {
 					// NOTE remember to consider REDIS_VALUE_POLL_NO_TOPIC when mini-poll adds topics
-					redis.sadd(REDIS_KEY_POLL_TOPICS + pollId, NO_VALUE_PLACEHOLDER)
+					redis.sadd(REDIS_SET_KEY_POLL_TOPICS + pollId, NO_VALUE_PLACEHOLDER)
 					return []
 				}
-				redis.sadd(REDIS_KEY_POLL_TOPICS + pollId, topicIds)
+				redis.sadd(REDIS_SET_KEY_POLL_TOPICS + pollId, topicIds)
 				return data
 			},
 		})
+		// NOTE might want to consider pulling instead of pushing?
 		topicIds.forEach(async (e: string) => {
 			const topicFollowers = await redisCacheCheck({
-				key: REDIS_KEY_TOPIC_FOLLOWERS + e,
+				key: REDIS_SET_KEY_TOPIC_FOLLOWERS + e,
 				args: [],
 				type: "smembers",
 				hit: async (cache) => cache,
@@ -154,16 +158,16 @@ export class VoteResolver {
 							.followers({ select: { followerId: true } })
 					).map((e) => e.followerId)
 					if (data.length === 0) return []
-					redis.sadd(REDIS_KEY_TOPIC_FOLLOWERS + e, data)
+					redis.sadd(REDIS_SET_KEY_TOPIC_FOLLOWERS + e, data)
 					return data
 				},
 			})
 			topicFollowers.forEach(async (e: string) => {
-				const p = await redis.zscore(REDIS_KEY_HOME_FEED + e, pollId)
-				if (p) redis.zincrby(REDIS_KEY_HOME_FEED + e, 1, pollId)
+				const p = await redis.zscore(REDIS_SORTEDSET_KEY_HOME_FEED + e, pollId)
+				if (p) redis.zincrby(REDIS_SORTEDSET_KEY_HOME_FEED + e, 1, pollId)
 				else {
-					const n = await redis.zcard(REDIS_KEY_HOME_FEED + e)
-					redis.zincrby(REDIS_KEY_HOME_FEED + e, n + 1, pollId)
+					const n = await redis.zcard(REDIS_SORTEDSET_KEY_HOME_FEED + e)
+					redis.zincrby(REDIS_SORTEDSET_KEY_HOME_FEED + e, n + 1, pollId)
 				}
 			})
 		})
@@ -209,9 +213,9 @@ export class VoteResolver {
 								},
 							},
 						]
-						redis.hincrby(REDIS_KEY_OPTION + current.optionId, "numOfVotes", 1)
+						redis.hincrby(REDIS_HASH_KEY_OPTION + current.optionId, "numOfVotes", 1)
 						// Add Vote of Option
-						redis.hset(REDIS_KEY_USER_VOTE_HISTORY + voterId, current.optionId, pollId)
+						redis.hset(REDIS_HASH_KEY_USER_VOTE_HISTORY + voterId, current.optionId, pollId)
 						// Option -1
 						transaction = [
 							...transaction,
@@ -224,9 +228,9 @@ export class VoteResolver {
 								},
 							},
 						]
-						redis.hincrby(REDIS_KEY_OPTION + toUnvote.optionId, "numOfVotes", -1)
+						redis.hincrby(REDIS_HASH_KEY_OPTION + toUnvote.optionId, "numOfVotes", -1)
 						// if (numOfChoices = 1) Delete Vote of Option in redis
-						redis.hdel(REDIS_KEY_USER_VOTE_HISTORY + voterId, toUnvote.optionId)
+						redis.hdel(REDIS_HASH_KEY_USER_VOTE_HISTORY + voterId, toUnvote.optionId)
 						// if (numOfChoices = 1) Change Vote Option in db
 						transaction = [
 							...transaction,
@@ -265,10 +269,10 @@ export class VoteResolver {
 						},
 					},
 				]
-				redis.hincrby(REDIS_KEY_POLL + pollId, "numOfVotes", 1)
-				redis.hincrby(REDIS_KEY_OPTION + current.optionId, "numOfVotes", 1)
+				redis.hincrby(REDIS_HASH_KEY_POLL + pollId, "numOfVotes", 1)
+				redis.hincrby(REDIS_HASH_KEY_OPTION + current.optionId, "numOfVotes", 1)
 				// Add New Vote
-				redis.hset(REDIS_KEY_USER_VOTE_HISTORY + voterId, current.optionId, pollId)
+				redis.hset(REDIS_HASH_KEY_USER_VOTE_HISTORY + voterId, current.optionId, pollId)
 				transaction = [
 					...transaction,
 					{
@@ -310,9 +314,9 @@ export class VoteResolver {
 								},
 							},
 						]
-						redis.hincrby(REDIS_KEY_OPTION + current.optionId, "numOfVotes", -1)
+						redis.hincrby(REDIS_HASH_KEY_OPTION + current.optionId, "numOfVotes", -1)
 						// Add Vote of Option
-						redis.hset(REDIS_KEY_USER_VOTE_HISTORY + voterId, toVote.optionId, pollId)
+						redis.hset(REDIS_HASH_KEY_USER_VOTE_HISTORY + voterId, toVote.optionId, pollId)
 						// Option +1
 						transaction = [
 							...transaction,
@@ -325,9 +329,9 @@ export class VoteResolver {
 								},
 							},
 						]
-						redis.hincrby(REDIS_KEY_OPTION + toVote.optionId, "numOfVotes", 1)
+						redis.hincrby(REDIS_HASH_KEY_OPTION + toVote.optionId, "numOfVotes", 1)
 						// if (numOfChoices = 1) Delete Vote of Option in redis
-						redis.hdel(REDIS_KEY_USER_VOTE_HISTORY + voterId, current.optionId)
+						redis.hdel(REDIS_HASH_KEY_USER_VOTE_HISTORY + voterId, current.optionId)
 						// if (numOfChoices = 1) Change Vote Option in db
 						transaction = [
 							...transaction,
@@ -366,10 +370,10 @@ export class VoteResolver {
 						},
 					},
 				]
-				redis.hincrby(REDIS_KEY_OPTION + current.optionId, "numOfVotes", -1)
-				redis.hincrby(REDIS_KEY_POLL + pollId, "numOfVotes", -1)
+				redis.hincrby(REDIS_HASH_KEY_OPTION + current.optionId, "numOfVotes", -1)
+				redis.hincrby(REDIS_HASH_KEY_POLL + pollId, "numOfVotes", -1)
 				// Delete Vote
-				redis.hdel(REDIS_KEY_USER_VOTE_HISTORY + req.session.userId, current.optionId)
+				redis.hdel(REDIS_HASH_KEY_USER_VOTE_HISTORY + req.session.userId, current.optionId)
 				transaction = [
 					...transaction,
 					{

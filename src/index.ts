@@ -10,7 +10,7 @@ import { buildSchema } from "type-graphql"
 import { User } from "./../prisma/models/users/User"
 import { COOKIE_NAME, __prod__ } from "./constants"
 import { redis } from "./redis"
-import { GraphQLContext } from "./types/GraphQLContext"
+import { graphqlContext } from "./types/graphqlContext"
 import passportStrategy from "./utils/auth/passportStrategy"
 import { createOptionLoader } from "./utils/createDataLoaders/createOptionLoader"
 import { createPollLoader } from "./utils/createDataLoaders/createPollLoader"
@@ -31,7 +31,7 @@ const main = async () => {
 
 	app.use(
 		cors({
-			origin: "http://localhost:3000",
+			origin: ["http://localhost:3000", "http://localhost:8080"],
 			credentials: true,
 		})
 	)
@@ -60,7 +60,7 @@ const main = async () => {
 			resolvers: [path.join(__dirname, "./resolvers/*.js")],
 			validate: false,
 		}),
-		context: ({ req, res }): GraphQLContext => ({
+		context: ({ req, res }): graphqlContext => ({
 			req,
 			res,
 			redis,
@@ -84,7 +84,7 @@ const main = async () => {
 	app.get(
 		"/auth/google",
 		passport.authenticate("google", {
-			scope: ["email"],
+			scope: ["profile","email"],
 		})
 	)
 

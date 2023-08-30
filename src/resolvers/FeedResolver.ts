@@ -1,13 +1,13 @@
 import { Arg, Ctx, Field, ObjectType, Query, Resolver, UseMiddleware } from "type-graphql"
 import {
 	NO_VALUE_PLACEHOLDER,
-	REDIS_KEY_HOME_FEED,
-	REDIS_KEY_USER_FOLLOWING_LANGUAGES,
-	REDIS_KEY_USER_FOLLOWING_TOPICS,
-	REDIS_KEY_USER_FOLLOWING_USERS,
+	REDIS_SET_KEY_USER_FOLLOWING_LANGUAGES,
+	REDIS_SET_KEY_USER_FOLLOWING_TOPICS,
+	REDIS_SET_KEY_USER_FOLLOWING_USERS,
+	REDIS_SORTEDSET_KEY_HOME_FEED,
 } from "../constants"
 import { prisma } from "../prisma"
-import { GraphQLContext } from "../types/GraphQLContext"
+import { graphqlContext } from "../types/graphqlContext"
 import { getPopularPollIds } from "../utils/getPopularPollIds"
 import { redisCacheCheck } from "../utils/redisCacheCheck"
 import { orderedShuffle } from "../utils/shuffle"
@@ -35,15 +35,160 @@ export class FeedResolver {
 	}
 
 	@Query(() => [FeedItem])
+	async getTopicTopPolls(
+		@Arg("topicId", () => String) topicId: string,
+		// @Arg("seen", () => [String]) seen: string[],
+		@Arg("cursorId", () => String, { nullable: true }) cursorId?: string
+	): Promise<FeedItem[]> {
+		// if (seen.length === 0) seen.push(NO_VALUE_PLACEHOLDER)
+		const pollIds = (
+			await prisma.topic
+				.findUnique({ where: { id: topicId } })
+				.polls({ select: { pollId: true } })
+		).map((e) => e.pollId)
+		// .filter((e) => !seen.includes(e))
+		return (
+			cursorId
+				? await prisma.poll.findMany({
+						where: { id: { in: pollIds } },
+						take: 5,
+						skip: 1,
+						cursor: {
+							id: cursorId,
+						},
+						orderBy: [{ numOfVotes: "desc" }, { createdAt: "desc" }],
+						select: { id: true },
+				  })
+				: await prisma.poll.findMany({
+						where: { id: { in: pollIds } },
+						take: 5,
+						orderBy: [{ numOfVotes: "desc" }, { createdAt: "desc" }],
+						select: { id: true },
+				  })
+		).map((e) => ({
+			...e,
+			item: null,
+		}))
+	}
+
+	@Query(() => [FeedItem])
+	async getTopicNewPolls(
+		@Arg("topicId", () => String) topicId: string,
+		@Arg("cursorId", () => String, { nullable: true }) cursorId?: string
+	): Promise<FeedItem[]> {
+		const pollIds = (
+			await prisma.topic
+				.findUnique({ where: { id: topicId } })
+				.polls({ select: { pollId: true } })
+		).map((e) => e.pollId)
+		return (
+			cursorId
+				? await prisma.poll.findMany({
+						where: { id: { in: pollIds } },
+						take: 5,
+						skip: 1,
+						cursor: {
+							id: cursorId,
+						},
+						orderBy: { createdAt: "desc" },
+						select: { id: true },
+				  })
+				: await prisma.poll.findMany({
+						where: { id: { in: pollIds } },
+						take: 5,
+						orderBy: { createdAt: "desc" },
+						select: { id: true },
+				  })
+		).map((e) => ({
+			...e,
+			item: null,
+		}))
+	}
+
+	@Query(() => [FeedItem])
+	async getUserVotedPolls(
+		@Arg("userId", () => String) userId: string,
+		@Arg("cursorId", () => String, { nullable: true }) cursorId?: string
+	): Promise<FeedItem[]> {
+		const pollIds = (
+			await prisma.user.findUnique({ where: { id: userId } }).votes({ select: { pollId: true } })
+		).map((e) => e.pollId)
+		return (
+			cursorId
+				? await prisma.poll.findMany({
+						where: { id: { in: pollIds } },
+						take: 5,
+						skip: 1,
+						cursor: {
+							id: cursorId,
+						},
+						orderBy: { createdAt: "desc" },
+						select: { id: true },
+				  })
+				: await prisma.poll.findMany({
+						where: { id: { in: pollIds } },
+						take: 5,
+						orderBy: { createdAt: "desc" },
+						select: { id: true },
+				  })
+		).map((e) => ({
+			...e,
+			item: null,
+		}))
+	}
+
+	@Query(() => [FeedItem])
+	async getUserPostedPolls(
+		@Ctx() { req }: graphqlContext,
+		@Arg("userId", () => String) userId: string,
+		@Arg("cursorId", () => String, { nullable: true }) cursorId?: string
+	): Promise<FeedItem[]> {
+		let pollIds = (
+			await prisma.user.findUnique({ where: { id: userId } }).polls({ select: { id: true } })
+		).map((e) => e.id)
+		if (userId === req.session.userId)
+			pollIds = [
+				...pollIds,
+				...(
+					await prisma.user
+						.findUnique({ where: { id: userId } })
+						.anonymousPolls({ select: { id: true } })
+				).map((e) => e.id),
+			]
+		return (
+			cursorId
+				? await prisma.poll.findMany({
+						where: { id: { in: pollIds } },
+						take: 5,
+						skip: 1,
+						cursor: {
+							id: cursorId,
+						},
+						orderBy: { createdAt: "desc" },
+						select: { id: true },
+				  })
+				: await prisma.poll.findMany({
+						where: { id: { in: pollIds } },
+						take: 5,
+						orderBy: { createdAt: "desc" },
+						select: { id: true },
+				  })
+		).map((e) => ({
+			...e,
+			item: null,
+		}))
+	}
+
+	@Query(() => [FeedItem])
 	@UseMiddleware(isLoggedIn)
 	async getHomeFeed(
 		@Arg("seen", () => [String]) seen: string[],
-		@Ctx() { req, redis }: GraphQLContext
+		@Ctx() { req, redis }: graphqlContext
 	): Promise<FeedItem[]> {
 		const id = req.session.userId
 		if (seen.length === 0) seen.push(NO_VALUE_PLACEHOLDER)
 		const languageCodes = await redisCacheCheck({
-			key: REDIS_KEY_USER_FOLLOWING_LANGUAGES + id,
+			key: REDIS_SET_KEY_USER_FOLLOWING_LANGUAGES + id,
 			args: [],
 			type: "smembers",
 			hit: async (cache) => cache,
@@ -52,13 +197,14 @@ export class FeedResolver {
 					(e) => e.languageCode
 				)
 				if (!data || data.length === 0) return []
-				redis.sadd(REDIS_KEY_USER_FOLLOWING_LANGUAGES + id, data)
+				redis.sadd(REDIS_SET_KEY_USER_FOLLOWING_LANGUAGES + id, data)
 				return data
 			},
 		})
+		// NOTE might want to consider pulling following topics here?
 		const feed = (
 			await redisCacheCheck({
-				key: REDIS_KEY_HOME_FEED + id,
+				key: REDIS_SORTEDSET_KEY_HOME_FEED + id,
 				args: [0, 20],
 				type: "zrevrange",
 				hit: async (cache: string[]) => [
@@ -77,7 +223,7 @@ export class FeedResolver {
 		if (feed && feed.length > 25) return feed
 		// Not Enough Feed
 		const topicIds = await redisCacheCheck({
-			key: REDIS_KEY_USER_FOLLOWING_TOPICS + id,
+			key: REDIS_SET_KEY_USER_FOLLOWING_TOPICS + id,
 			args: [],
 			type: "smembers",
 			hit: async (cache) => cache,
@@ -88,12 +234,12 @@ export class FeedResolver {
 				})
 				if (!data || !data.followingTopics || data.followingTopics.length === 0) return []
 				let dataIds = data.followingTopics.map((e) => e.topicId)
-				redis.sadd(REDIS_KEY_USER_FOLLOWING_TOPICS + id, dataIds)
+				redis.sadd(REDIS_SET_KEY_USER_FOLLOWING_TOPICS + id, dataIds)
 				return dataIds
 			},
 		})
 		const userIds = await redisCacheCheck({
-			key: REDIS_KEY_USER_FOLLOWING_USERS + id,
+			key: REDIS_SET_KEY_USER_FOLLOWING_USERS + id,
 			args: [],
 			type: "smembers",
 			hit: async (cache) => cache,
@@ -104,7 +250,7 @@ export class FeedResolver {
 				})
 				if (!data || !data.followingUsers || data.followingUsers.length === 0) return []
 				let dataIds = data.followingUsers.map((e) => e.userId)
-				redis.sadd(REDIS_KEY_USER_FOLLOWING_USERS + id, dataIds)
+				redis.sadd(REDIS_SET_KEY_USER_FOLLOWING_USERS + id, dataIds)
 				return dataIds
 			},
 		})

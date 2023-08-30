@@ -1,7 +1,7 @@
 import { MiddlewareFn } from "type-graphql"
-import { GraphQLContext } from "../../types/GraphQLContext"
+import { graphqlContext } from "../../types/graphqlContext"
 
-export const isLoggedIn: MiddlewareFn<GraphQLContext> = ({ context }, next) => {
+export const isLoggedIn: MiddlewareFn<graphqlContext> = ({ context }, next) => {
 	if (!context.req.session.userId) throw new Error("Not Logged in")
 	return next()
 }
