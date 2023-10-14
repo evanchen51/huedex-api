@@ -6,4 +6,6 @@ export class Language {
 	code: string
 	@Field()
 	nativeName: string
+	@Field()
+	englishName: string
 }
