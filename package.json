@@ -7,7 +7,7 @@
 		"build": "tsc",
 		"watch": "tsc -w",
 		"dev": "nodemon dist/src/index.js",
-		"start": "node dist/src/index.js",
+		"start": " prisma db push && node dist/src/index.js",
 		"gen": "npx prisma migrate dev --name edit"
 	},
 	"keywords": [],
