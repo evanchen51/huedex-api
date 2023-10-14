@@ -1,11 +1,12 @@
 import { prisma } from "../../prisma"
+import "dotenv-safe/config"
 
 let GoogleStrategy = require("passport-google-oauth").OAuth2Strategy
 const passportStrategy = new GoogleStrategy(
 	{
-		clientID: "127060738971-hd7lfh52mv0f0s4b3ck62mnfu92ttefu.apps.googleusercontent.com",
-		clientSecret: "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",
-		callbackURL: "http://localhost:4000/auth/google/callback",
+		clientID: process.env.GOOGLE_CLIENTID,
+		clientSecret: process.env.GOOGLE_CLIENTSECRET,
+		callbackURL: process.env.API_URL + "/auth/google/callback",
 	},
 	async (_: any, __: any, data: any, done: any) => {
 		// console.log(data)

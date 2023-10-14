@@ -4,7 +4,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = "postgresql://postgres:postgres@localhost:5432/test"
+  url      = env("DATABASE_URL")
 }
 
 model FollowLanguage {
@@ -57,13 +57,13 @@ model Language {
 }
 
 model MediaType {
-  id        String   @id @default(cuid())
-  code      String   @unique
-  info      String
-  createdAt DateTime @default(now()) @db.Timestamp(0)
-  updatedAt DateTime @default(now()) @updatedAt @db.Timestamp(0)
-  options   Option[]
-  polls     Poll[]
+  id          String   @id @default(cuid())
+  code        String   @unique
+  description String
+  createdAt   DateTime @default(now()) @db.Timestamp(0)
+  updatedAt   DateTime @default(now()) @updatedAt @db.Timestamp(0)
+  options     Option[]
+  polls       Poll[]
 }
 
 model PollType {
@@ -79,7 +79,7 @@ model Option {
   id             String          @id @default(cuid())
   text           String
   numOfVotes     Int             @default(0)
-  mediaUrl       String?
+  mediaURL       String?
   pollId         String
   mediaTypeCode  String?
   languageCode   String          @default("un")
@@ -96,7 +96,7 @@ model Poll {
   id                String          @id @default(cuid())
   text              String
   numOfVotes        Int             @default(0)
-  mediaUrl          String?
+  mediaURL          String?
   sensitive         Boolean         @default(false)
   posterId          String?
   mediaTypeCode     String?
@@ -106,6 +106,7 @@ model Poll {
   updatedAt         DateTime        @default(now()) @updatedAt @db.Timestamp(0)
   anonymousPosterId String?
   numOfChoices      Int             @default(1)
+  featured          Boolean?
   anonymousPoster   User?           @relation("AnonymousPolls", fields: [anonymousPosterId], references: [id])
   language          Language        @relation(fields: [languageCode], references: [code], onDelete: SetDefault)
   mediaType         MediaType?      @relation(fields: [mediaTypeCode], references: [code])

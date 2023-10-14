@@ -31,12 +31,15 @@ export const REDIS_SORTEDSET_KEY_HOME_FEED = "home.feed:"
 // REDIS_CACHE_CONVERT_
 export const REDIS_CACHE_CONVERT_INT = ["numOfVotes", "numOfChoices"]
 export const REDIS_CACHE_CONVERT_DATE = ["createdAt", "updatedAt"]
-export const REDIS_CACHE_CONVERT_BOOLEAN = ["private", "sensitive"]
+export const REDIS_CACHE_CONVERT_BOOLEAN = ["private", "sensitive","featured"]
 
 // LanguageCodes
 export const UNKNOWN = "un"
 export const EN = "en"
 export const ZH_TW = "zh-TW"
+
+// MediaTypeCodes
+export const IMAGE = "img"
 
 // NO_VALUE_PLACEHOLDER
 export const NO_VALUE_PLACEHOLDER = "_"

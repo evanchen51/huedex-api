@@ -22,7 +22,7 @@ export const getPopularPollIds = async ({
 		type: "hgetall",
 		hit: async (cache) => Object.entries(cache).map((e) => e[0]),
 		miss: async () => {
-			const data = (await prisma.language.findMany()).filter((e) => e.code !== UNKNOWN)
+			const data = (await prisma.language.findMany())?.filter((e) => e.code !== UNKNOWN)
 			redis.hset(REDIS_HASH_KEY_LANGUAGE_CODES, ...data.flatMap((e) => [e.code, e.nativeName]))
 			return data.map((e) => e.code)
 		},

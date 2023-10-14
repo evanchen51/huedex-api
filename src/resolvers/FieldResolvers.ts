@@ -40,13 +40,14 @@ export class PollFieldResolver {
 				type: "smembers",
 				hit: async (cache) => cache,
 				miss: async () => {
-					const data = (
+					const rawData = (
 						await prisma.poll.findUnique({ where: { id: poll.id } }).options({
 							select: { id: true },
 							orderBy: [{ numOfVotes: "desc" }, { createdAt: "desc" }],
 						})
-					).map((e) => e.id)
-					if (!data || data.length === 0) return []
+					)
+					if (!rawData || rawData.length === 0) return []
+					const data = rawData.map((e) => e.id)
 					redis.sadd(REDIS_SET_KEY_POLL_OPTIONS + poll.id, data)
 					return data
 				},
@@ -63,12 +64,13 @@ export class PollFieldResolver {
 				type: "smembers",
 				hit: async (cache) => cache,
 				miss: async () => {
-					const data = (
+					const rawData = (
 						await prisma.poll
 							.findUnique({ where: { id: poll.id } })
 							.options({ select: { id: true } })
-					).map((e) => e.id)
-					if (!data || data.length === 0) return []
+					)
+					if (!rawData || rawData.length === 0) return []
+					const data = rawData.map((e) => e.id)
 					redis.sadd(REDIS_SET_KEY_POLL_OPTIONS + poll.id, data)
 					return data
 				},
@@ -112,16 +114,17 @@ export class PollFieldResolver {
 				return cache.map((e: string) => ({ pollId: poll.id, topicId: e }))
 			},
 			miss: async () => {
-				const data = (
+				const rawData = (
 					await prisma.poll
 						.findUnique({ where: { id: poll.id } })
 						.topics({ select: { topicId: true } })
-				).map((e) => e.topicId)
-				if (data.length === 0) {
+				)
+				if (!rawData || rawData.length === 0) {
 					// NOTE remember to consider REDIS_VALUE_POLL_NO_TOPIC when mini-poll adds topics
 					redis.sadd(REDIS_SET_KEY_POLL_TOPICS + poll.id, NO_VALUE_PLACEHOLDER)
 					return []
 				}
+				const data = rawData.map((e) => e.topicId)
 				redis.sadd(REDIS_SET_KEY_POLL_TOPICS + poll.id, data)
 				return data.map((e) => ({ pollId: poll.id, topicId: e }))
 			},

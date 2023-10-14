@@ -103,12 +103,13 @@ export class VoteResolver {
 			type: "smembers",
 			hit: async (cache) => cache,
 			miss: async () => {
-				const data = (
+				const rawData = (
 					await prisma.user
 						.findUnique({ where: { id: voterId } })
 						.followers({ select: { followerId: true } })
-				).map((e) => e.followerId)
-				if (data.length === 0) return []
+				)
+				if (!rawData || rawData.length === 0) return []
+				const data = rawData.map((e) => e.followerId)
 				redis.sadd(REDIS_SET_KEY_USER_FOLLOWERS + voterId, data)
 				return data
 			},
@@ -130,16 +131,17 @@ export class VoteResolver {
 				return cache
 			},
 			miss: async () => {
-				const data = (
+				const rawData = (
 					await prisma.poll
 						.findUnique({ where: { id: pollId } })
 						.topics({ select: { topicId: true } })
-				).map((e) => e.topicId)
-				if (data.length === 0) {
+				)
+				if (!rawData || rawData.length === 0) {
 					// NOTE remember to consider REDIS_VALUE_POLL_NO_TOPIC when mini-poll adds topics
 					redis.sadd(REDIS_SET_KEY_POLL_TOPICS + pollId, NO_VALUE_PLACEHOLDER)
 					return []
 				}
+				const data = rawData.map((e) => e.topicId)
 				redis.sadd(REDIS_SET_KEY_POLL_TOPICS + pollId, topicIds)
 				return data
 			},
@@ -152,12 +154,13 @@ export class VoteResolver {
 				type: "smembers",
 				hit: async (cache) => cache,
 				miss: async () => {
-					const data = (
+					const rawData = (
 						await prisma.topic
 							.findUnique({ where: { id: e } })
 							.followers({ select: { followerId: true } })
-					).map((e) => e.followerId)
-					if (data.length === 0) return []
+					)
+					if (!rawData || rawData.length === 0) return []
+					const data = rawData.map((e) => e.followerId)
 					redis.sadd(REDIS_SET_KEY_TOPIC_FOLLOWERS + e, data)
 					return data
 				},

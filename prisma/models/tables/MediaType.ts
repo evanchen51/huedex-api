@@ -5,5 +5,5 @@ export class MediaType {
 	@Field()
 	code: string
 	@Field()
-	info: string
+	description: string
 }

@@ -15,7 +15,7 @@ export class UtilResolver {
 			type: "hgetall",
 			hit: async (cache) => Object.entries(cache).map((e) => ({ code: e[0], nativeName: e[1] })),
 			miss: async () => {
-				const data = (await prisma.language.findMany()).filter((e) => e.code !== UNKNOWN)
+				const data = (await prisma.language.findMany())?.filter((e) => e.code !== UNKNOWN)
 				redis.hset(
 					REDIS_HASH_KEY_LANGUAGE_CODES,
 					...data.flatMap((e) => [e.code, e.nativeName])

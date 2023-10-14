@@ -28,7 +28,9 @@ export class FeedResolver {
 	async getVisitorFeed(
 		@Arg("languageCodes", () => [String]) languageCodes: string[]
 	): Promise<FeedItem[]> {
-		return (await getPopularPollIds({ languageCodes, req: 5, en: 3, any: 2 })).map((e) => ({
+		const data = await getPopularPollIds({ languageCodes, req: 5, en: 3, any: 2 })
+		if (!data || data.length === 0) return []
+		return data.map((e) => ({
 			...e,
 			item: null,
 		}))
@@ -41,11 +43,11 @@ export class FeedResolver {
 		@Arg("cursorId", () => String, { nullable: true }) cursorId?: string
 	): Promise<FeedItem[]> {
 		// if (seen.length === 0) seen.push(NO_VALUE_PLACEHOLDER)
-		const pollIds = (
-			await prisma.topic
-				.findUnique({ where: { id: topicId } })
-				.polls({ select: { pollId: true } })
-		).map((e) => e.pollId)
+		const data = await prisma.topic
+			.findUnique({ where: { id: topicId } })
+			.polls({ select: { pollId: true } })
+		if (!data || data.length === 0) return []
+		const pollIds = data.map((e) => e.pollId)
 		// .filter((e) => !seen.includes(e))
 		return (
 			cursorId
@@ -65,7 +67,7 @@ export class FeedResolver {
 						orderBy: [{ numOfVotes: "desc" }, { createdAt: "desc" }],
 						select: { id: true },
 				  })
-		).map((e) => ({
+		)?.map((e) => ({
 			...e,
 			item: null,
 		}))
@@ -76,11 +78,11 @@ export class FeedResolver {
 		@Arg("topicId", () => String) topicId: string,
 		@Arg("cursorId", () => String, { nullable: true }) cursorId?: string
 	): Promise<FeedItem[]> {
-		const pollIds = (
-			await prisma.topic
-				.findUnique({ where: { id: topicId } })
-				.polls({ select: { pollId: true } })
-		).map((e) => e.pollId)
+		const data = await prisma.topic
+			.findUnique({ where: { id: topicId } })
+			.polls({ select: { pollId: true } })
+		if (!data || data.length === 0) return []
+		const pollIds = data.map((e) => e.pollId)
 		return (
 			cursorId
 				? await prisma.poll.findMany({
@@ -99,7 +101,7 @@ export class FeedResolver {
 						orderBy: { createdAt: "desc" },
 						select: { id: true },
 				  })
-		).map((e) => ({
+		)?.map((e) => ({
 			...e,
 			item: null,
 		}))
@@ -110,9 +112,11 @@ export class FeedResolver {
 		@Arg("userId", () => String) userId: string,
 		@Arg("cursorId", () => String, { nullable: true }) cursorId?: string
 	): Promise<FeedItem[]> {
-		const pollIds = (
-			await prisma.user.findUnique({ where: { id: userId } }).votes({ select: { pollId: true } })
-		).map((e) => e.pollId)
+		const data = await prisma.user
+			.findUnique({ where: { id: userId } })
+			.votes({ select: { pollId: true } })
+		if (!data || data.length === 0) return []
+		const pollIds = data.map((e) => e.pollId)
 		return (
 			cursorId
 				? await prisma.poll.findMany({
@@ -131,7 +135,7 @@ export class FeedResolver {
 						orderBy: { createdAt: "desc" },
 						select: { id: true },
 				  })
-		).map((e) => ({
+		)?.map((e) => ({
 			...e,
 			item: null,
 		}))
@@ -143,9 +147,11 @@ export class FeedResolver {
 		@Arg("userId", () => String) userId: string,
 		@Arg("cursorId", () => String, { nullable: true }) cursorId?: string
 	): Promise<FeedItem[]> {
-		let pollIds = (
-			await prisma.user.findUnique({ where: { id: userId } }).polls({ select: { id: true } })
-		).map((e) => e.id)
+		const data = await prisma.user
+			.findUnique({ where: { id: userId } })
+			.polls({ select: { id: true } })
+		if (!data || data.length === 0) return []
+		let pollIds = data.map((e) => e.id)
 		if (userId === req.session.userId)
 			pollIds = [
 				...pollIds,
@@ -153,7 +159,7 @@ export class FeedResolver {
 					await prisma.user
 						.findUnique({ where: { id: userId } })
 						.anonymousPolls({ select: { id: true } })
-				).map((e) => e.id),
+				)?.map((e) => e.id),
 			]
 		return (
 			cursorId
@@ -173,7 +179,7 @@ export class FeedResolver {
 						orderBy: { createdAt: "desc" },
 						select: { id: true },
 				  })
-		).map((e) => ({
+		)?.map((e) => ({
 			...e,
 			item: null,
 		}))
@@ -187,16 +193,21 @@ export class FeedResolver {
 	): Promise<FeedItem[]> {
 		const id = req.session.userId
 		if (seen.length === 0) seen.push(NO_VALUE_PLACEHOLDER)
+		else {
+			seen.forEach(async (e) => {
+				const p = await redis.zscore(REDIS_SORTEDSET_KEY_HOME_FEED + id, e)
+				if (p) redis.zincrby(REDIS_SORTEDSET_KEY_HOME_FEED + id, -1, e)
+			})
+		}
 		const languageCodes = await redisCacheCheck({
 			key: REDIS_SET_KEY_USER_FOLLOWING_LANGUAGES + id,
 			args: [],
 			type: "smembers",
 			hit: async (cache) => cache,
 			miss: async () => {
-				const data = (await prisma.user.findUnique({ where: { id } }).followingLanguages()).map(
-					(e) => e.languageCode
-				)
-				if (!data || data.length === 0) return []
+				const rawData = (await prisma.user.findUnique({ where: { id } }).followingLanguages())
+				if (!rawData || rawData.length === 0) return []
+				const data = rawData.map((e) => e.languageCode)
 				redis.sadd(REDIS_SET_KEY_USER_FOLLOWING_LANGUAGES + id, data)
 				return data
 			},
@@ -207,19 +218,20 @@ export class FeedResolver {
 				key: REDIS_SORTEDSET_KEY_HOME_FEED + id,
 				args: [0, 20],
 				type: "zrevrange",
-				hit: async (cache: string[]) => [
-					...new Set(
-						orderedShuffle([
-							cache,
-							(
-								await getPopularPollIds({ languageCodes, req: 6, en: 2, any: 2 })
-							).map((e) => e.id),
-						]).map((e) => ({ id: e, item: null }))
-					),
-				],
+				hit: async (cache: string[]) =>
+					[
+						...new Set(
+							orderedShuffle([
+								cache,
+								(
+									await getPopularPollIds({ languageCodes, req: 6, en: 2, any: 2 })
+								)?.map((e) => e.id),
+							])
+						),
+					].map((e) => ({ id: e, item: null })),
 				miss: async () => [],
 			})
-		).filter((e) => !seen.includes(e.id))
+		)?.filter((e) => !seen.includes(e.id))
 		if (feed && feed.length > 25) return feed
 		// Not Enough Feed
 		const topicIds = await redisCacheCheck({
@@ -286,7 +298,7 @@ export class FeedResolver {
 								orderBy: [{ numOfVotes: "desc" }, { createdAt: "desc" }],
 								take: 2,
 							})
-						).map((e) => e.id),
+						)?.map((e) => e.id),
 						...(
 							await prisma.poll.findMany({
 								where: {
@@ -296,7 +308,7 @@ export class FeedResolver {
 								orderBy: [{ createdAt: "desc" }, { numOfVotes: "desc" }],
 								take: 3,
 							})
-						).map((e) => e.id),
+						)?.map((e) => e.id),
 				  ]
 				: []
 		const followingTopicsPollIds =
@@ -314,7 +326,7 @@ export class FeedResolver {
 								orderBy: [{ numOfVotes: "desc" }, { createdAt: "desc" }],
 								take: 2,
 							})
-						).map((e) => e.id),
+						)?.map((e) => e.id),
 						...(
 							await prisma.poll.findMany({
 								where: {
@@ -327,7 +339,7 @@ export class FeedResolver {
 								orderBy: [{ createdAt: "desc" }, { numOfVotes: "desc" }],
 								take: 3,
 							})
-						).map((e) => e.id),
+						)?.map((e) => e.id),
 				  ]
 				: []
 		const followingUsersPollIds =
@@ -346,7 +358,7 @@ export class FeedResolver {
 								orderBy: [{ numOfVotes: "desc" }, { createdAt: "desc" }],
 								take: 4,
 							})
-						).map((e) => e.id),
+						)?.map((e) => e.id),
 						...(
 							await prisma.poll.findMany({
 								where: {
@@ -360,7 +372,7 @@ export class FeedResolver {
 								orderBy: [{ createdAt: "desc" }, { numOfVotes: "desc" }],
 								take: 6,
 							})
-						).map((e) => e.id),
+						)?.map((e) => e.id),
 				  ]
 				: []
 		return [

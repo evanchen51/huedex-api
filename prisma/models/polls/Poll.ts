@@ -1,4 +1,4 @@
-import { PollType } from '../tables/PollType'
+import { PollType } from "../tables/PollType"
 import { Field, Int, ObjectType } from "type-graphql"
 import { Language } from "../tables/Language"
 import { MediaType } from "../tables/MediaType"
@@ -17,7 +17,9 @@ export class Poll {
 	@Field(() => Int)
 	numOfVotes: number
 	@Field(() => String, { nullable: true })
-	mediaUrl?: string | null
+	mediaURL?: string | null
+	@Field(() => Boolean, { nullable: true })
+	featured?: boolean | null
 	@Field()
 	sensitive: boolean
 	@Field(() => String, { nullable: true })

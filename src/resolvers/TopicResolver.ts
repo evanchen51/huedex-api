@@ -13,7 +13,7 @@ export class TopicResolver {
 			key: REDIS_SET_KEY_TOPICS,
 			args: [],
 			type: "smembers",
-			hit: async (cache) => cache,
+			hit: async (cache) => cache.map((e: any) => typeof e === "string" && { id: e }),
 			// hit: async (cache) => Object.entries(cache).map((e) => ({ name: e[0], id: e[1] })),
 			miss: async () => {
 				const data = await prisma.topic.findMany({ select: { id: true } })

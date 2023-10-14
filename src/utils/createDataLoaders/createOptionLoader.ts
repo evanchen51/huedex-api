@@ -26,7 +26,7 @@ export const createOptionLoader = () =>
 		}
 		let dbOptions: Record<string, Option> = {}
 		if (cacheMiss.length > 0)
-			(await prisma.option.findMany({ where: { id: { in: cacheMiss } } })).forEach((e) => {
+			(await prisma.option.findMany({ where: { id: { in: cacheMiss } } }))?.forEach((e) => {
 				if (e) {
 					redis.hset(REDIS_HASH_KEY_OPTION + e.id, Object.entries(e).flat(1))
 					dbOptions[e.id] = e

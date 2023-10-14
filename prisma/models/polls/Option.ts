@@ -1,9 +1,9 @@
-import { Field, Int, ObjectType } from "type-graphql";
-import { Language } from './../tables/Language';
-import { MediaType } from './../tables/MediaType';
-import { AnonymousVote } from './../votes/AnonymousVote';
-import { Vote } from './../votes/Vote';
-import { Poll } from './Poll';
+import { Field, Int, ObjectType } from "type-graphql"
+import { Language } from "./../tables/Language"
+import { MediaType } from "./../tables/MediaType"
+import { AnonymousVote } from "./../votes/AnonymousVote"
+import { Vote } from "./../votes/Vote"
+import { Poll } from "./Poll"
 
 @ObjectType()
 export class Option {
@@ -14,7 +14,7 @@ export class Option {
 	@Field(() => Int)
 	numOfVotes: number
 	@Field(() => String, { nullable: true })
-	mediaUrl?: string | null
+	mediaURL?: string | null
 	@Field()
 	pollId: string
 	@Field(() => String, { nullable: true })

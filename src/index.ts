@@ -1,6 +1,7 @@
 import { ApolloServer } from "apollo-server-express"
 import connectRedis from "connect-redis"
 import cors from "cors"
+import "dotenv-safe/config"
 import express from "express"
 import session from "express-session"
 import passport from "passport"
@@ -14,8 +15,8 @@ import { graphqlContext } from "./types/graphqlContext"
 import passportStrategy from "./utils/auth/passportStrategy"
 import { createOptionLoader } from "./utils/createDataLoaders/createOptionLoader"
 import { createPollLoader } from "./utils/createDataLoaders/createPollLoader"
-import { createTopicLoader } from "./utils/createDataLoaders/createTopicLoader"
 import { createTopOptionLoader } from "./utils/createDataLoaders/createTopOptionLoader"
+import { createTopicLoader } from "./utils/createDataLoaders/createTopicLoader"
 import { createUserLoader } from "./utils/createDataLoaders/createUserLoader"
 
 const main = async () => {
@@ -31,7 +32,7 @@ const main = async () => {
 
 	app.use(
 		cors({
-			origin: ["http://localhost:3000", "http://localhost:8080"],
+			origin: [process.env.CORS_ORIGIN_1, process.env.CORS_ORIGIN_1],
 			credentials: true,
 		})
 	)
@@ -50,7 +51,7 @@ const main = async () => {
 				secure: __prod__, // to only work in https
 			},
 			saveUninitialized: false,
-			secret: "process.env.SESSION_SECRET",
+			secret: process.env.SESSION_SECRET,
 			resave: false,
 		})
 	)
@@ -84,7 +85,7 @@ const main = async () => {
 	app.get(
 		"/auth/google",
 		passport.authenticate("google", {
-			scope: ["profile","email"],
+			scope: ["profile", "email"],
 		})
 	)
 
@@ -98,11 +99,11 @@ const main = async () => {
 		),
 		(req, res) => {
 			;(req.session as any).userId = (req.user as User).id
-			res.redirect("http://localhost:3000/login-success-redirect")
+			res.redirect(process.env.CORS_ORIGIN_1 + "/login-success-redirect")
 		}
 	)
 
-	app.listen(4000, () => {
+	app.listen(parseInt(process.env.PORT), () => {
 		console.log("——— server running ———")
 	})
 }

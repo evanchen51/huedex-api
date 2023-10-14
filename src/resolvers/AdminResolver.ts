@@ -1,6 +1,7 @@
-import { Language } from './../../prisma/models/tables/Language';
 import { Arg, Field, InputType, Mutation, Query, Resolver, UseMiddleware } from "type-graphql"
 import { prisma } from "../prisma"
+import { Language } from "./../../prisma/models/tables/Language"
+import { MediaType } from "./../../prisma/models/tables/MediaType"
 import { isAdmin } from "./../middleware/graphql/isAdmin"
 
 @InputType()
@@ -11,6 +12,14 @@ class NewLanguage {
 	nativeName: string
 	@Field()
 	englishName: string
+}
+
+@InputType()
+class NewMediaType {
+	@Field()
+	code: string
+	@Field()
+	description: string
 }
 
 @Resolver()
@@ -30,6 +39,21 @@ export class AdminResolver {
 		return await prisma.language.findMany()
 	}
 
+	@Mutation(() => [MediaType])
+	@UseMiddleware(isAdmin)
+	async addMediaType(
+		@Arg("passcode", () => String)
+		@Arg("input", () => NewMediaType)
+		{ code, description }: NewMediaType
+	) {
+		await prisma.mediaType.upsert({
+			create: { code, description },
+			update: { description },
+			where: { code },
+		})
+		return await prisma.mediaType.findMany()
+	}
+
 	@Query(() => String, { nullable: true })
 	async test() {
 		/* const t = new v2.Translate({ key: "AIzaSyCqL0CrmWt8t5h30tdi0TKHj1XgLWzkpB0" })
@@ -47,6 +71,6 @@ export class AdminResolver {
 				// data.push(JSON.stringify(tt))
 				data.push(res[i].name + ": " + tt)
 			}*/
-		return JSON.stringify("test")
+		return "r"
 	}
 }
