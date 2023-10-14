@@ -1,6 +1,8 @@
+import { GetObjectCommand } from "@aws-sdk/client-s3"
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner"
 import { createId } from "@paralleldrive/cuid2"
 import { Arg, Int, Mutation, Resolver, UseMiddleware } from "type-graphql"
-import { bucketName, s3 } from "../s3"
+import { s3 } from "../s3"
 import { isLoggedIn } from "./../middleware/graphql/isLoggedIn"
 
 // @InputType()
@@ -22,13 +24,11 @@ export class MediaResolver {
 	async getS3URLs(@Arg("numOfReq", () => Int) numOfReq: number) {
 		const URLs = []
 		for (let i = 0; i < numOfReq; i++) {
-			URLs.push(
-				await s3.getSignedUrlPromise("putObject", {
-					Bucket: bucketName,
-					Key: createId(),
-					Expires: 60,
-				})
-			)
+			const command = new GetObjectCommand({
+				Bucket: process.env.S3_BUCKETNAME,
+				Key: createId(),
+			})
+			URLs.push(await getSignedUrl(s3, command, { expiresIn: 60 }))
 		}
 		return URLs
 	}

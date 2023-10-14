@@ -1,14 +1,14 @@
-import aws from "aws-sdk"
+import { S3Client } from "@aws-sdk/client-s3"
 import "dotenv-safe/config"
 
-export const bucketName = process.env.S3_BUCKETNAME
 const region = process.env.S3_REGION
 const accessKeyId = process.env.S3_ACCESSKEYID
 const secretAccessKey = process.env.S3_SECRETACCESSKEY
 
-export const s3 = new aws.S3({
+export const s3 = new S3Client({
 	region,
-	accessKeyId,
-	secretAccessKey,
-	signatureVersion: "v4",
+	credentials: {
+		accessKeyId,
+		secretAccessKey,
+	}
 })
