@@ -24,6 +24,15 @@ class NewMediaType {
 
 @Resolver()
 export class AdminResolver {
+	@Query(() => Boolean)
+	@UseMiddleware(isAdmin)
+	async checkAdmin(
+		@Arg("passcode", () => String)
+		{}
+	) {
+		return true
+	}
+
 	@Mutation(() => [Language])
 	@UseMiddleware(isAdmin)
 	async addLanguage(
