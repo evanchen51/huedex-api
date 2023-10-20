@@ -9,8 +9,8 @@ import { Poll } from "./Poll"
 export class Option {
 	@Field()
 	id: string
-	@Field()
-	text: string
+	@Field(() => String, { nullable: true })
+	text?: string|null
 	@Field(() => Int)
 	numOfVotes: number
 	@Field(() => String, { nullable: true })

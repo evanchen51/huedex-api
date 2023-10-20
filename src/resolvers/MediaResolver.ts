@@ -1,4 +1,4 @@
-import { GetObjectCommand } from "@aws-sdk/client-s3"
+import { PutObjectCommand } from "@aws-sdk/client-s3"
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner"
 import { createId } from "@paralleldrive/cuid2"
 import { Arg, Int, Mutation, Resolver, UseMiddleware } from "type-graphql"
@@ -24,7 +24,7 @@ export class MediaResolver {
 	async getS3URLs(@Arg("numOfReq", () => Int) numOfReq: number) {
 		const URLs = []
 		for (let i = 0; i < numOfReq; i++) {
-			const command = new GetObjectCommand({
+			const command = new PutObjectCommand({
 				Bucket: process.env.S3_BUCKETNAME,
 				Key: createId(),
 			})
