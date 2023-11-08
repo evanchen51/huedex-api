@@ -34,8 +34,8 @@ export const createTopOptionLoader = () =>
 			})
 		const res = ids.map((e) => e.map((e_1) => cachedOptions[e_1] || dbOptions[e_1]))
 		return res.map((e) => {
-			e.sort((a, b) => b.numOfVotes - a.numOfVotes)
-				.sort((a, b) => (a.index ?? 0) - (b.index ?? 0))
+			e.sort((a, b) => (a.index ?? 0) - (b.index ?? 0))
+			.sort((a, b) => b.numOfVotes - a.numOfVotes)
 			return e.slice(0, 3)
 		})
 	})
