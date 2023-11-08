@@ -156,13 +156,14 @@ export class PollResolver {
 				language: { connect: { code: languageCode } },
 				text,
 				options: {
-					create: options.map((e) => ({
+					create: options.map((e,i) => ({
 						language: { connect: { code: languageCode } },
 						text: e.text,
 						...(e.media && {
 							mediaType: { connect: { code: e.media.type } },
 							mediaURL: e.media.URL,
 						}),
+						index:i
 					})).reverse(),
 				},
 				...(!anonymous && { poster: { connect: { id: posterId } } }),

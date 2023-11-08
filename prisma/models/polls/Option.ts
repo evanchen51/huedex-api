@@ -21,6 +21,8 @@ export class Option {
 	mediaTypeCode?: string | null
 	@Field()
 	languageCode: string
+	@Field(() => Number, { nullable: true })
+	index?: number | null
 	@Field(() => String)
 	createdAt: Date
 	@Field(() => String)

@@ -83,6 +83,7 @@ model Option {
   pollId         String
   mediaTypeCode  String?
   languageCode   String          @default("un")
+  index          Int?
   createdAt      DateTime        @default(now()) @db.Timestamp(0)
   updatedAt      DateTime        @default(now()) @updatedAt @db.Timestamp(0)
   language       Language        @relation(fields: [languageCode], references: [code], onDelete: SetDefault)
