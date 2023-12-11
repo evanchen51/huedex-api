@@ -65,7 +65,7 @@ export class AdminResolver {
 
 	@Query(() => String, { nullable: true })
 	async test() {
-		/* const t = new v2.Translate({ key: "AIzaSyCqL0CrmWt8t5h30tdi0TKHj1XgLWzkpB0" })
+		/* const t = new v2.Translate({ key: "" })
 			const data = await t.detect("Which Bang-Bang-Bang's the shit") //[0]//.language
 			const res = (await t.getLanguages())[0]
 			const data = []
